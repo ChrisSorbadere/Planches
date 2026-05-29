@@ -444,23 +444,38 @@ function fbToModel(tree){
   return {niveaux:groups};
 }
 
+let LAST_ERR='';
 async function loadCatalog(){
-  // 1) cache immédiat (offline-first) : affichage instantané
+  LAST_ERR='';
+  // 1) cache immédiat (offline-first)
   const cached=localStorage.getItem(LS.fbcache);
   if(cached){ try{ CATALOG=JSON.parse(cached); }catch{} }
-  // 2) rafraîchir depuis Firebase
+  // ouverture en local (file://) : fetch impossible
+  if(location.protocol==='file:'){
+    LAST_ERR="L'appli est ouverte en local (file://). Les navigateurs bloquent les requêtes : sers-la via un serveur (python3 -m http.server) ou déploie-la sur GitHub Pages.";
+    if(!CATALOG.niveaux||!CATALOG.niveaux.length) CATALOG={niveaux:[]};
+    return;
+  }
+  // 2) Firebase
   const fb=localStorage.getItem(LS.src)||FB_DEFAULT;
   try{
     const r=await fetch(fb,{cache:'no-store'});
-    if(!r.ok) throw 0;
-    const tree=await r.json();
+    let body=null; try{ body=await r.clone().json(); }catch{}
+    if(!r.ok){
+      if(r.status===401 || (body&&body.error)) LAST_ERR='Firebase refuse la lecture (HTTP '+r.status+' — "Permission denied"). Tes règles exigent une authentification. Soit tu rouvres la lecture, soit j\'ajoute une connexion à l\'appli.';
+      else LAST_ERR='Firebase a répondu HTTP '+r.status+'.';
+      throw 0;
+    }
+    const tree=body!==null?body:await r.json();
+    if(tree===null){ LAST_ERR='La base Firebase a répondu, mais le nœud est vide (null). Vérifie le chemin : '+fb; throw 0; }
     const model=fbToModel(tree);
     if(model.niveaux.length){ CATALOG=model; localStorage.setItem(LS.fbcache, JSON.stringify(model)); }
+    else { LAST_ERR='Données reçues mais structure inattendue (aucune planche reconnue). Le chemin pointe-t-il bien sur Planches2 ?'; throw 0; }
   }catch(e){
-    // 3) repli si rien en cache : planches.json local
+    if(!LAST_ERR) LAST_ERR='Échec de connexion à Firebase (réseau ou CORS). Vérifie ta connexion et l\'URL dans Réglages.';
     if(!CATALOG.niveaux || !CATALOG.niveaux.length){
-      try{ const r=await fetch('planches.json',{cache:'no-store'}); CATALOG=await r.json(); if(!CATALOG.niveaux) CATALOG={niveaux:[]}; }
-      catch{ CATALOG={niveaux:[]}; }
+      try{ const r=await fetch('planches.json',{cache:'no-store'}); const j=await r.json(); if(j&&j.niveaux&&j.niveaux.length){CATALOG=j;LAST_ERR='';} else if(!CATALOG.niveaux) CATALOG={niveaux:[]}; }
+      catch{ if(!CATALOG.niveaux) CATALOG={niveaux:[]}; }
     }
   }
 }
@@ -513,7 +528,13 @@ function render(){
   if(!nav.niveau){
     title.textContent='Mes Planches'; back.style.visibility='hidden';
     const ns=niveaux();
-    if(!ns.length){ list.appendChild(emptyMsg('Aucune planche pour le moment.\nAppuie sur + pour en ajouter, ou configure ton catalogue dans les réglages.')); return; }
+    if(!ns.length){
+      const box=el('div','empty');
+      box.textContent = LAST_ERR || 'Aucune planche pour le moment.\nAppuie sur + pour en ajouter, ou configure ta source dans les réglages.';
+      list.appendChild(box);
+      if(LAST_ERR){ const b=el('button','btn ghost'); b.textContent='Réessayer'; b.style.maxWidth='200px'; b.style.margin='18px auto 0'; b.style.display='block'; b.onclick=async()=>{await loadCatalog();render();}; list.appendChild(b); }
+      return;
+    }
     ns.forEach(n=>list.appendChild(folderRow(n, countNiv(n), ()=>{nav.niveau=n; render();})));
     return;
   }
