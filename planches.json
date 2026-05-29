@@ -1,0 +1,45 @@
+{
+  "_commentaire": "Catalogue de planches. Structure à 3 niveaux : niveaux > categories > planches. Chaque planche a un titre, un type ('link' ou 'text'), et selon le type une 'url' ou un champ 'texte'. Remplace ce contenu d'exemple par tes vraies planches. Héberge ce fichier à la racine de ton dépôt GitHub Pages.",
+  "niveaux": [
+    {
+      "nom": "Apprenti",
+      "categories": [
+        {
+          "nom": "Symbolisme",
+          "planches": [
+            { "id": "ex1", "titre": "Le cabinet de réflexion", "type": "text", "texte": "# Le cabinet de réflexion\n\nRemplace ce texte d'exemple par le contenu de ta planche.\n\nLe lecteur affiche le texte avec une mise en forme légère : une ligne commençant par # devient un titre, ## un sous-titre, et une ligne vide sépare les paragraphes." },
+            { "id": "ex2", "titre": "Les trois grandes lumières", "type": "link", "url": "https://fr.wikipedia.org/wiki/Franc-ma%C3%A7onnerie" }
+          ]
+        },
+        {
+          "nom": "Méthode",
+          "planches": [
+            { "id": "ex3", "titre": "Comment rédiger une planche", "type": "text", "texte": "# Rédiger une planche\n\nIntroduction, développement, conclusion.\n\nCeci est un exemple — édite planches.json pour mettre ton propre contenu." }
+          ]
+        }
+      ]
+    },
+    {
+      "nom": "Compagnon",
+      "categories": [
+        {
+          "nom": "Voyages",
+          "planches": [
+            { "id": "ex4", "titre": "Exemple de planche (lien PDF)", "type": "link", "url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf" }
+          ]
+        }
+      ]
+    },
+    {
+      "nom": "Maître",
+      "categories": [
+        {
+          "nom": "Réflexions",
+          "planches": [
+            { "id": "ex5", "titre": "Note d'exemple", "type": "text", "texte": "Ajoute ici tes planches du 3e degré.\n\n(Contenu d'exemple, à remplacer.)" }
+          ]
+        }
+      ]
+    }
+  ]
+}
