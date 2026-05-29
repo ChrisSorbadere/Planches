@@ -580,13 +580,26 @@ function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>'
 
 /* ---------------- VIEWER (OK screen) ---------------- */
 let currentUrl='';
-// Google Drive /view -> /preview (intégrable en iframe) ; autres URLs inchangées
+function isDrive(u){ return /drive\.google\.com/.test(u||''); }
+// ouverture fiable dans un nouvel onglet (déclenchée par un geste utilisateur)
+function openTab(url){
+  if(!url) return;
+  const a=document.createElement('a');
+  a.href=url; a.target='_blank'; a.rel='noopener';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+// Google Drive /view -> /preview (pour les rares liens non-Drive intégrables)
 function embedUrl(u){
   const m=(u||'').match(/\/file\/d\/([^/]+)/);
-  if(m && /drive\.google\.com/.test(u)) return 'https://drive.google.com/file/d/'+m[1]+'/preview';
+  if(m && isDrive(u)) return 'https://drive.google.com/file/d/'+m[1]+'/preview';
   return u;
 }
 function openViewer(p){
+  // Liens Google Drive : fichiers protégés -> ouverture directe dans un onglet.
+  // Le login Google natif fonctionne, contrairement à l'iframe que les navigateurs
+  // bloquent (cookies tiers) sur un fichier restreint.
+  if(p.type!=='text' && isDrive(p.url)){ openTab(p.url); return; }
+
   const v=$('#viewer'); $('#vTitle').textContent=p.titre||'Planche';
   const frame=$('#vFrame'), txt=$('#vText'), hint=$('#vHint');
   hint.classList.remove('show'); 
