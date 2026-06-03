@@ -312,6 +312,7 @@ main{flex:1;overflow-y:auto;padding:6px 14px 90px;-webkit-overflow-scrolling:tou
     <h2>Réglages</h2>
     <div class="field"><label>Code de secours (4 chiffres)</label><input id="setPin" inputmode="numeric" maxlength="4" placeholder="Définir / modifier le code"></div>
     <div class="btnrow"><button class="btn ghost" id="setBioReg">Activer la biométrie</button></div>
+    <div class="field" style="margin-top:18px"><label>Compte Google (ouverture des docs)</label><input id="setGAcct" placeholder="ex. titi.gropif@gmail.com" autocomplete="off" inputmode="email"></div>
     <div class="field" style="margin-top:18px"><label>Base Firebase (REST JSON)</label><input id="setSrc" placeholder="https://….firebaseio.com/Planches2.json"></div>
     <div class="btnrow"><button class="btn ghost" id="setReload">Recharger depuis Firebase</button></div>
     <div class="btnrow"><button class="btn del" id="setLock" style="flex:1">Verrouiller maintenant</button></div>
@@ -329,9 +330,10 @@ main{flex:1;overflow-y:auto;padding:6px 14px 90px;-webkit-overflow-scrolling:tou
 const LS = {
   pin:'planches_pin', cred:'planches_cred', src:'planches_src',
   local:'planches_local', fav:'planches_fav', unlocked:'planches_session',
-  fbcache:'planches_fbcache'
+  fbcache:'planches_fbcache', gacct:'planches_gacct'
 };
 const FB_DEFAULT='https://triangulo-62f6e.firebaseio.com/Planches2.json';
+const G_ACCT_DEFAULT='titi.gropif@gmail.com';
 const $ = s => document.querySelector(s);
 const el = (t,c)=>{const e=document.createElement(t); if(c) e.className=c; return e;};
 const toast = m => { const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2200); };
@@ -581,6 +583,13 @@ function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>'
 /* ---------------- VIEWER (OK screen) ---------------- */
 let currentUrl='';
 function isDrive(u){ return /drive\.google\.com/.test(u||''); }
+// Pré-sélection du compte Google : ajoute ?authuser=<email> pour éviter le sélecteur de compte
+function withAuthUser(u){
+  const acct=((localStorage.getItem(LS.gacct) ?? G_ACCT_DEFAULT) || '').trim();
+  if(!acct || !isDrive(u)) return u;
+  try{ const url=new URL(u); url.searchParams.set('authuser', acct); return url.toString(); }
+  catch{ return u + (u.includes('?')?'&':'?') + 'authuser=' + encodeURIComponent(acct); }
+}
 // ouverture fiable dans un nouvel onglet (déclenchée par un geste utilisateur)
 function openTab(url){
   if(!url) return;
@@ -598,7 +607,7 @@ function openViewer(p){
   // Liens Google Drive : fichiers protégés -> ouverture directe dans un onglet.
   // Le login Google natif fonctionne, contrairement à l'iframe que les navigateurs
   // bloquent (cookies tiers) sur un fichier restreint.
-  if(p.type!=='text' && isDrive(p.url)){ openTab(p.url); return; }
+  if(p.type!=='text' && isDrive(p.url)){ openTab(withAuthUser(p.url)); return; }
 
   const v=$('#viewer'); $('#vTitle').textContent=p.titre||'Planche';
   const frame=$('#vFrame'), txt=$('#vText'), hint=$('#vHint');
@@ -615,8 +624,8 @@ function openViewer(p){
 }
 function closeViewer(){ $('#viewer').classList.remove('open'); setTimeout(()=>{$('#vFrame').src='about:blank';},350); }
 $('#vClose').addEventListener('click',closeViewer);
-$('#vOpen').addEventListener('click',()=>{ if(currentUrl) window.open(currentUrl,'_blank'); });
-$('#vHintOpen').addEventListener('click',()=>{ if(currentUrl) window.open(currentUrl,'_blank'); });
+$('#vOpen').addEventListener('click',()=>{ if(currentUrl) openTab(withAuthUser(currentUrl)); });
+$('#vHintOpen').addEventListener('click',()=>{ if(currentUrl) openTab(withAuthUser(currentUrl)); });
 // best-effort detection of frame block
 $('#vFrame').addEventListener('error',()=>$('#vHint').classList.add('show'));
 
@@ -681,7 +690,8 @@ $('#addDelete').onclick=()=>{
 };
 
 /* ---------------- SETTINGS ---------------- */
-$('#setBtn').onclick=()=>{ $('#setSrc').value=localStorage.getItem(LS.src)||FB_DEFAULT; $('#setPin').value=''; $('#setScrim').classList.add('open'); };
+$('#setBtn').onclick=()=>{ $('#setSrc').value=localStorage.getItem(LS.src)||FB_DEFAULT; $('#setPin').value=''; $('#setGAcct').value=localStorage.getItem(LS.gacct) ?? G_ACCT_DEFAULT; $('#setScrim').classList.add('open'); };
+$('#setGAcct').onchange=e=>localStorage.setItem(LS.gacct, e.target.value.trim());
 $('#setScrim').onclick=e=>{if(e.target===$('#setScrim'))$('#setScrim').classList.remove('open');};
 $('#setPin').oninput=e=>{ const v=e.target.value.replace(/\D/g,'').slice(0,4); e.target.value=v; if(v.length===4){localStorage.setItem(LS.pin,v);toast('Code mis à jour');} };
 $('#setBioReg').onclick=async()=>{ const ok=await bioRegister(); toast(ok?'Biométrie activée':'Échec / non supporté'); };
